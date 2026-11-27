@@ -109,6 +109,7 @@ app = FastAPI(
 
 _local_origins = ("http://localhost:5173", "http://localhost:3000")
 _production_origins = ("https://homecontrol-app.vercel.app",)
+_vercel_preview_pattern = r"https://homecontrol-app(?:-[a-z0-9-]+)?\.vercel\.app"
 
 
 def build_allowed_origins() -> list[str]:
@@ -137,6 +138,7 @@ def build_allowed_origins() -> list[str]:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=build_allowed_origins(),
+    allow_origin_regex=_vercel_preview_pattern,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],

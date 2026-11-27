@@ -114,3 +114,26 @@ def test_cors_preflight_for_vercel_origin():
     )
     assert get_response.status_code == 200
     assert get_response.headers["access-control-allow-origin"] == "https://homecontrol-app.vercel.app"
+
+
+def test_cors_preflight_for_vercel_preview_origin():
+    preview_origin = "https://homecontrol-app-git-main-example.vercel.app"
+    response = client.options(
+        "/rooms",
+        headers={
+            "Origin": preview_origin,
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == preview_origin
+
+    rejected = client.options(
+        "/rooms",
+        headers={
+            "Origin": "https://unrelated-site.example.com",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+    assert rejected.status_code == 400
+    assert "access-control-allow-origin" not in rejected.headers
