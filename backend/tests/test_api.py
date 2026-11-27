@@ -71,11 +71,46 @@ def test_cors_includes_configured_frontend_origin(monkeypatch):
     assert "*" not in origins
 
 
-def test_cors_defaults_to_localhost_only(monkeypatch):
+def test_cors_defaults_include_production_and_dev_origins(monkeypatch):
+    monkeypatch.delenv("APP_ENV", raising=False)
     monkeypatch.delenv("FRONTEND_ORIGIN", raising=False)
     monkeypatch.delenv("BACKEND_CORS_ORIGINS", raising=False)
 
-    assert build_allowed_origins() == [
+    assert set(build_allowed_origins()) == {
+        "https://homecontrol-app.vercel.app",
         "http://localhost:5173",
         "http://localhost:3000",
-    ]
+    }
+
+
+def test_cors_supports_multiple_comma_separated_origins(monkeypatch):
+    monkeypatch.setenv(
+        "FRONTEND_ORIGIN",
+        "https://homecontrol-app.vercel.app, https://homecontrol-app-git-main.vercel.app",
+    )
+    monkeypatch.setenv("BACKEND_CORS_ORIGINS", "https://preview.example.com")
+
+    origins = build_allowed_origins()
+    assert "https://homecontrol-app.vercel.app" in origins
+    assert "https://homecontrol-app-git-main.vercel.app" in origins
+    assert "https://preview.example.com" in origins
+    assert "*" not in origins
+
+
+def test_cors_preflight_for_vercel_origin():
+    response = client.options(
+        "/devices",
+        headers={
+            "Origin": "https://homecontrol-app.vercel.app",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "https://homecontrol-app.vercel.app"
+    assert "GET" in response.headers["access-control-allow-methods"]
+
+    get_response = client.get(
+        "/devices", headers={"Origin": "https://homecontrol-app.vercel.app"}
+    )
+    assert get_response.status_code == 200
+    assert get_response.headers["access-control-allow-origin"] == "https://homecontrol-app.vercel.app"

@@ -133,8 +133,8 @@ npm run dev
 | Variable | Used by | Purpose |
 | -------- | ------- | ------- |
 | `VITE_API_BASE_URL` | Frontend | Backend base URL, embedded at build time |
-| `FRONTEND_ORIGIN` | Backend | Allowed Vercel origin for CORS (localhost origins stay allowed) |
-| `BACKEND_CORS_ORIGINS` | Backend | Optional extra comma-separated origins |
+| `FRONTEND_ORIGIN` | Backend | Exact allowed frontend origins, comma-separated. The production Vercel origin is always allowed. |
+| `BACKEND_CORS_ORIGINS` | Backend | Additional exact comma-separated origins, e.g. the precise Vercel preview URL seen in the browser. |
 | `LOG_LEVEL` | Backend | Optional logging level, default `INFO` |
 | `SMART_HOME_DB_PATH` | Backend | Optional SQLite file; unset means in-memory state |
 

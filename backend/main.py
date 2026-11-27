@@ -112,6 +112,13 @@ _production_origins = ("https://homecontrol-app.vercel.app",)
 
 
 def build_allowed_origins() -> list[str]:
+    """Return explicit CORS origins (never a wildcard with credentials).
+
+    The production Vercel origin is always present, so a missing APP_ENV on the
+    host cannot silently break the dashboard. Additional exact origins — such
+    as a Vercel preview deployment — are supplied via FRONTEND_ORIGIN or
+    BACKEND_CORS_ORIGINS as comma-separated values.
+    """
     configured = [
         origin.strip()
         for value in (
@@ -121,9 +128,10 @@ def build_allowed_origins() -> list[str]:
         for origin in value.split(",")
         if origin.strip()
     ]
+    origins = [*_production_origins, *configured]
     if os.getenv("APP_ENV", "").strip().lower() == "production":
-        return list(dict.fromkeys([*_production_origins, *configured]))
-    return list(dict.fromkeys([*_local_origins, *configured]))
+        return list(dict.fromkeys(origins))
+    return list(dict.fromkeys([*_local_origins, *origins]))
 
 
 app.add_middleware(
