@@ -71,6 +71,16 @@ export function AirConditionerIcon(props: IconProps) {
   )
 }
 
+export function GenericDeviceIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <rect x="4" y="4" width="16" height="16" rx="3" />
+      <path d="M9 9h6M9 13h6M12 9v4" />
+      <path d="M8 20v2M16 20v2" />
+    </BaseIcon>
+  )
+}
+
 export function CalendarIcon(props: IconProps) {
   return (
     <BaseIcon {...props}>

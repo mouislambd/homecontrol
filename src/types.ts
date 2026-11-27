@@ -1,4 +1,5 @@
 export type DeviceAccent = 'light' | 'fan' | 'ac'
+export type DeviceTypeKey = DeviceAccent | 'generic'
 
 export type DeviceStatus = 'ON' | 'OFF'
 
@@ -13,7 +14,8 @@ export interface Device {
   name: string
   description: string
   isOn: boolean
-  accent: DeviceAccent
+  device_type: DeviceTypeKey
+  wattage?: number
 }
 
 export interface AccentTheme {

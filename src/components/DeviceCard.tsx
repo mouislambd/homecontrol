@@ -1,13 +1,6 @@
+import { getDeviceType } from '../config/devices'
 import type { Device } from '../types'
-import { accentThemes } from '../theme'
 import { ToggleSwitch } from './ToggleSwitch'
-import { AirConditionerIcon, FanIcon, LightIcon } from './icons'
-
-const deviceIcons = {
-  light: LightIcon,
-  fan: FanIcon,
-  ac: AirConditionerIcon,
-}
 
 interface DeviceCardProps {
   device: Device
@@ -15,6 +8,9 @@ interface DeviceCardProps {
   disabled?: boolean
   online?: boolean
   onConnectivity?: () => void
+  temperature?: number | null
+  onTemperature?: (value: number) => void
+  temperatureDisabled?: boolean
 }
 
 export function DeviceCard({
@@ -23,9 +19,12 @@ export function DeviceCard({
   disabled = false,
   online = true,
   onConnectivity,
+  temperature = null,
+  onTemperature,
+  temperatureDisabled = false,
 }: DeviceCardProps) {
-  const theme = accentThemes[device.accent]
-  const Icon = deviceIcons[device.accent]
+  const config = getDeviceType(device.device_type)
+  const { icon: Icon, theme } = config
   const { isOn } = device
 
   return (
@@ -66,7 +65,28 @@ export function DeviceCard({
         >
           {device.name}
         </h3>
-        <p className="mt-1 text-xs text-slate-500">{device.description}</p>
+        <p className="mt-1 text-xs text-slate-500">
+          {config.label} · {device.description}
+        </p>
+      </div>
+
+      <div className="relative mt-4 space-y-2 text-xs text-slate-500">
+        <p>{config.capabilityHint}</p>
+        {device.wattage !== undefined && <p>Rated power: {device.wattage} W</p>}
+        {config.supportsTemperature && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={temperature === null ? '' : 'text-cyan-200'}>
+              Simulated temperature: {temperature === null ? 'not set' : `${temperature} °C`}
+            </span>
+            {onTemperature && (
+              <TemperatureInput
+                deviceName={device.name}
+                disabled={disabled || temperatureDisabled}
+                onSubmit={onTemperature}
+              />
+            )}
+          </div>
+        )}
       </div>
 
       <div className="relative mt-4 flex items-center justify-between text-xs">
@@ -103,5 +123,41 @@ export function DeviceCard({
         <span className="text-xs text-slate-500">{isOn ? 'Active' : 'Inactive'}</span>
       </div>
     </article>
+  )
+}
+
+interface TemperatureInputProps {
+  deviceName: string
+  disabled: boolean
+  onSubmit: (value: number) => void
+}
+
+function TemperatureInput({ deviceName, disabled, onSubmit }: TemperatureInputProps) {
+  return (
+    <form
+      className="flex items-center gap-1"
+      onSubmit={(event) => {
+        event.preventDefault()
+        const data = new FormData(event.currentTarget)
+        const value = Number(data.get('temperature'))
+        if (Number.isFinite(value)) onSubmit(value)
+      }}
+    >
+      <input
+        type="number"
+        name="temperature"
+        step="0.1"
+        aria-label={`Simulated temperature for ${deviceName}`}
+        placeholder="°C"
+        className="w-16 rounded-lg border border-white/10 bg-slate-950/60 px-2 py-1 text-xs text-slate-100 outline-none focus:border-cyan-300/40"
+      />
+      <button
+        type="submit"
+        disabled={disabled}
+        className="rounded-full border border-cyan-400/20 px-2.5 py-1 text-[11px] text-cyan-200 transition hover:bg-cyan-400/10 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        Set
+      </button>
+    </form>
   )
 }

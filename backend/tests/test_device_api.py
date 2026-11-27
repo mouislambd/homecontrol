@@ -1,3 +1,4 @@
+import pytest
 from fastapi.testclient import TestClient
 
 from backend.main import app, build_allowed_origins
@@ -30,6 +31,49 @@ def test_create_update_and_delete_device():
     assert client.delete("/devices/plug-1").status_code == 204
     assert client.get("/devices/plug-1/status").status_code == 404
     assert client.delete("/devices/plug-1").status_code == 404
+
+
+@pytest.mark.parametrize(
+    "device_type,wattage,label",
+    [
+        ("light", 60, "Light"),
+        ("fan", 75, "Fan"),
+        ("ac", 1200, "Air Conditioner"),
+    ],
+)
+def test_each_device_type_keeps_its_identity(device_type, wattage, label):
+    device_id = f"{device_type}-new"
+    created = client.post(
+        "/devices",
+        json={
+            "id": device_id,
+            "name": label,
+            "device_type": device_type,
+            "wattage": wattage,
+        },
+    )
+    assert created.status_code == 201
+    assert created.json()["device_type"] == device_type
+    assert created.json()["name"] == label
+    assert created.json()["wattage"] == wattage
+
+    before = len(client.get("/devices").json()["devices"])
+
+    updated = client.put(
+        f"/devices/{device_id}", json={"name": f"Updated {label}", "wattage": wattage + 1}
+    )
+    assert updated.status_code == 200
+    assert updated.json()["device_type"] == device_type
+
+    refreshed = client.get(f"/devices/{device_id}/status")
+    assert refreshed.json()["device_type"] == device_type
+    assert refreshed.json()["wattage"] == wattage + 1
+    assert client.get(f"/devices/{device_id}/status").json()["name"] == f"Updated {label}"
+    assert len(client.get("/devices").json()["devices"]) == before
+
+    assert client.post(f"/devices/{device_id}/on").status_code == 200
+    assert client.get(f"/devices/{device_id}/status").json()["status"] == "ON"
+    assert client.delete(f"/devices/{device_id}").status_code == 204
 
 
 def test_device_creation_validation_and_conflicts():

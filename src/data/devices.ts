@@ -1,3 +1,4 @@
+import { deviceTypes } from '../config/devices'
 import type { DeviceAccent } from '../types'
 
 export interface DeviceMeta {
@@ -6,7 +7,7 @@ export interface DeviceMeta {
 }
 
 export const deviceMeta: Record<string, DeviceMeta> = {
-  light: { description: 'Living room lighting', accent: 'light' },
-  fan: { description: 'Ceiling fan', accent: 'fan' },
-  ac: { description: 'Climate control', accent: 'ac' },
+  light: { description: deviceTypes.light.description, accent: 'light' },
+  fan: { description: deviceTypes.fan.description, accent: 'fan' },
+  ac: { description: deviceTypes.ac.description, accent: 'ac' },
 }

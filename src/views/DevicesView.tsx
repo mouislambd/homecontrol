@@ -12,7 +12,7 @@ import {
   updateDevice,
 } from '../api/devices'
 import { fetchRooms } from '../api/rooms'
-import { deviceMeta } from '../data/devices'
+import { deviceTypeOptions, deviceTypes, getDeviceType } from '../config/devices'
 import { Field, inputClass } from '../components/FormFields'
 import { DeviceCard } from '../components/DeviceCard'
 import { Notice } from '../components/Notice'
@@ -25,22 +25,20 @@ interface DashboardDevice extends Device {
   online: boolean
   wattage: number
   room_id: string | null
-  device_type: string
   temperature_c: number | null
 }
 
 function toDevice(device: ApiDevice, detail: DeviceDetail | undefined): DashboardDevice {
-  const meta = deviceMeta[device.id]
+  const config = getDeviceType(detail?.device_type)
   return {
     id: device.id,
     name: device.name,
-    description: meta?.description ?? `${device.id} device`,
-    accent: meta?.accent ?? 'light',
+    description: config.description,
+    device_type: config.type,
     isOn: device.status === 'ON',
     online: detail?.online ?? true,
-    wattage: detail?.wattage ?? 0,
+    wattage: detail?.wattage ?? config.defaultWattage,
     room_id: detail?.room_id ?? null,
-    device_type: detail?.device_type ?? 'light',
     temperature_c: detail?.temperature_c ?? null,
   }
 }
@@ -59,8 +57,25 @@ const emptyForm = {
   id: '',
   name: '',
   device_type: 'light' as DeviceAccent,
-  wattage: '25',
+  wattage: String(deviceTypes.light.defaultWattage),
   room_id: '',
+}
+
+function withDeviceType(
+  current: typeof emptyForm,
+  deviceType: DeviceAccent,
+): typeof emptyForm {
+  const config = deviceTypes[deviceType]
+  const previousLabel = deviceTypes[current.device_type].label
+  return {
+    ...current,
+    device_type: deviceType,
+    wattage: String(config.defaultWattage),
+    name:
+      current.name.trim() === '' || current.name === previousLabel
+        ? config.label
+        : current.name,
+  }
 }
 
 export function DevicesView({ revision }: DevicesViewProps) {
@@ -71,9 +86,10 @@ export function DevicesView({ revision }: DevicesViewProps) {
   const [success, setSuccess] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
-  const [temperatureInputs, setTemperatureInputs] = useState<Record<string, string>>({})
   const devices = data ?? []
   const rooms = roomsState.data ?? []
+  const selectedConfig = deviceTypes[form.device_type]
+  const SelectedIcon = selectedConfig.icon
 
   const runAction = async (id: string, action: () => Promise<void>) => {
     if (pendingIds.includes(id)) return
@@ -102,11 +118,17 @@ export function DevicesView({ revision }: DevicesViewProps) {
     })
 
   const startEdit = (device: DashboardDevice) => {
+    const config = getDeviceType(device.device_type)
+    const deviceType: DeviceAccent = deviceTypeOptions.includes(
+      config.type as DeviceAccent,
+    )
+      ? (config.type as DeviceAccent)
+      : 'light'
     setEditingId(device.id)
     setForm({
       id: device.id,
       name: device.name,
-      device_type: (device.device_type as DeviceAccent) || 'light',
+      device_type: deviceType,
       wattage: String(device.wattage),
       room_id: device.room_id ?? '',
     })
@@ -153,15 +175,6 @@ export function DevicesView({ revision }: DevicesViewProps) {
       await reload()
     })
 
-  const applyTemperature = (device: DashboardDevice) =>
-    runAction(`temp:${device.id}`, async () => {
-      const value = Number(temperatureInputs[device.id] ?? '')
-      if (!Number.isFinite(value)) throw new Error('Enter a valid temperature')
-      await setDeviceTemperature(device.id, value)
-      setSuccess('Simulated temperature applied.')
-      await reload()
-    })
-
   const activeCount = devices.filter((device) => device.isOn).length
 
   return (
@@ -202,9 +215,19 @@ export function DevicesView({ revision }: DevicesViewProps) {
         onSubmit={submit}
         className="rounded-3xl border border-white/[0.07] bg-slate-900/40 p-6 backdrop-blur-xl"
       >
-        <h3 className="mb-5 text-sm font-semibold text-white">
-          {editingId ? 'Edit device' : 'Add a device'}
-        </h3>
+        <div className="mb-5 flex items-center gap-3">
+          <div
+            className={`flex h-11 w-11 items-center justify-center rounded-xl ring-1 ${selectedConfig.theme.iconWrapper}`}
+          >
+            <SelectedIcon className="h-6 w-6" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-white">
+              {editingId ? `Edit ${selectedConfig.label}` : `Add ${selectedConfig.label}`}
+            </h3>
+            <p className="mt-0.5 text-xs text-slate-500">{selectedConfig.capabilityHint}</p>
+          </div>
+        </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <Field label="ID">
             <input
@@ -221,7 +244,7 @@ export function DevicesView({ revision }: DevicesViewProps) {
               className={inputClass}
               value={form.name}
               onChange={(event) => setForm({ ...form, name: event.target.value })}
-              placeholder="Smart plug"
+              placeholder={selectedConfig.label}
               required
             />
           </Field>
@@ -229,13 +252,16 @@ export function DevicesView({ revision }: DevicesViewProps) {
             <select
               className={inputClass}
               value={form.device_type}
+              disabled={editingId !== null}
               onChange={(event) =>
-                setForm({ ...form, device_type: event.target.value as DeviceAccent })
+                setForm(withDeviceType(form, event.target.value as DeviceAccent))
               }
             >
-              <option value="light">Light</option>
-              <option value="fan">Fan</option>
-              <option value="ac">Air Conditioner</option>
+              {deviceTypeOptions.map((type) => (
+                <option key={type} value={type}>
+                  {deviceTypes[type].label}
+                </option>
+              ))}
             </select>
           </Field>
           <Field label="Rated watts">
@@ -263,6 +289,11 @@ export function DevicesView({ revision }: DevicesViewProps) {
             </select>
           </Field>
         </div>
+        {editingId && (
+          <p className="mt-4 text-[11px] text-slate-500">
+            Device type is fixed after creation to preserve its identity.
+          </p>
+        )}
         <div className="mt-5 flex gap-2">
           <button
             type="submit"
@@ -300,29 +331,20 @@ export function DevicesView({ revision }: DevicesViewProps) {
                   disabled={pendingIds.includes(device.id)}
                   online={device.online}
                   onConnectivity={() => void toggleConnectivity(device)}
+                  temperature={device.temperature_c}
+                  temperatureDisabled={pendingIds.includes(`temp:${device.id}`)}
+                  onTemperature={(value) =>
+                    void runAction(`temp:${device.id}`, async () => {
+                      await setDeviceTemperature(device.id, value)
+                      setSuccess('Simulated temperature applied.')
+                      await reload()
+                    })
+                  }
                 />
                 <div className="flex flex-wrap items-center justify-end gap-2">
                   <span className="mr-auto text-[11px] text-slate-500">
-                    Simulated temp: {device.temperature_c === null ? 'none' : `${device.temperature_c} °C`}
+                    {getDeviceType(device.device_type).label}
                   </span>
-                  <input
-                    type="number"
-                    aria-label={`Simulated temperature for ${device.name}`}
-                    className={`${inputClass} w-20 py-1 text-xs`}
-                    placeholder="°C"
-                    value={temperatureInputs[device.id] ?? ''}
-                    onChange={(event) =>
-                      setTemperatureInputs({ ...temperatureInputs, [device.id]: event.target.value })
-                    }
-                  />
-                  <button
-                    type="button"
-                    disabled={pendingIds.includes(`temp:${device.id}`)}
-                    onClick={() => void applyTemperature(device)}
-                    className="rounded-full border border-cyan-400/20 px-3 py-1 text-xs text-cyan-200 transition hover:bg-cyan-400/10 disabled:opacity-50"
-                  >
-                    Set
-                  </button>
                   <button
                     type="button"
                     onClick={() => startEdit(device)}
