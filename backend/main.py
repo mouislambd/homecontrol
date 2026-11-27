@@ -108,6 +108,7 @@ app = FastAPI(
 )
 
 _local_origins = ("http://localhost:5173", "http://localhost:3000")
+_production_origins = ("https://homecontrol-app.vercel.app",)
 
 
 def build_allowed_origins() -> list[str]:
@@ -121,7 +122,7 @@ def build_allowed_origins() -> list[str]:
         if origin.strip()
     ]
     if os.getenv("APP_ENV", "").strip().lower() == "production":
-        return list(dict.fromkeys(configured))
+        return list(dict.fromkeys([*_production_origins, *configured]))
     return list(dict.fromkeys([*_local_origins, *configured]))
 
 

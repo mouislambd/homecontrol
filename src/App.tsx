@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Header } from './components/Header'
 import { Tabs } from './components/Tabs'
 import type { TabItem } from './components/Tabs'
-import { WS_URL } from './config/api'
+import { WS_URL, isApiConfigured } from './config/api'
 import type { ViewId } from './types'
 import { ActivityView } from './views/ActivityView'
 import { DevicesView } from './views/DevicesView'
@@ -28,6 +28,8 @@ function App() {
   const [connected, setConnected] = useState(false)
 
   useEffect(() => {
+    if (!isApiConfigured) return
+
     let disposed = false
     let socket: WebSocket | null = null
     let timer: number | undefined
@@ -86,13 +88,28 @@ function App() {
       <main className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-5 py-8 sm:px-8 sm:py-12">
         <Header />
 
+        {!isApiConfigured && (
+          <div
+            role="alert"
+            className="mt-6 rounded-2xl border border-rose-400/20 bg-rose-500/10 px-5 py-4 text-sm text-rose-200"
+          >
+            Backend URL is missing. Set <code>VITE_API_BASE_URL</code> in the Vercel
+            project environment and redeploy; the dashboard will show this message
+            until it is configured.
+          </div>
+        )}
+
         <div className="mt-6 flex items-center gap-2 text-xs text-slate-400">
           <span
             className={`h-1.5 w-1.5 rounded-full ${
               connected ? 'animate-pulse-soft bg-emerald-300' : 'bg-slate-500'
             }`}
           />
-          {connected ? 'Real-time connected' : 'Reconnecting to real-time feed…'}
+          {!isApiConfigured
+            ? 'Configuration required'
+            : connected
+              ? 'Real-time connected'
+              : 'Reconnecting to real-time feed…'}
         </div>
 
         <Tabs tabs={tabs} active={view} onChange={setView} />

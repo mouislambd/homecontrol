@@ -1,8 +1,12 @@
+import { configurationError, isApiConfigured } from '../config/api'
+
 export function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Unable to complete the request.'
 }
 
 export async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
+  if (!isApiConfigured) throw configurationError()
+
   const hasBody = typeof init?.body === 'string'
   const response = await fetch(url, {
     ...init,

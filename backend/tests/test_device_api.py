@@ -48,8 +48,16 @@ def test_production_cors_does_not_include_localhost(monkeypatch):
     monkeypatch.setenv("APP_ENV", "production")
     monkeypatch.setenv("FRONTEND_ORIGIN", "https://example.vercel.app")
     origins = build_allowed_origins()
-    assert origins == ["https://example.vercel.app"]
+    assert "https://homecontrol-app.vercel.app" in origins
+    assert "https://example.vercel.app" in origins
     assert "http://localhost:5173" not in origins
+
+
+def test_production_cors_has_default_frontend_origin(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.delenv("FRONTEND_ORIGIN", raising=False)
+    monkeypatch.delenv("BACKEND_CORS_ORIGINS", raising=False)
+    assert build_allowed_origins() == ["https://homecontrol-app.vercel.app"]
 
 
 def test_energy_logs_endpoint_is_explicitly_labelled_as_estimated():

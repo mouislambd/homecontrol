@@ -1,12 +1,15 @@
 const configuredUrl = import.meta.env.VITE_API_BASE_URL
 
-if (typeof configuredUrl !== 'string' || configuredUrl.trim() === '') {
-  throw new Error('VITE_API_BASE_URL is not set. Add it to .env.local or your hosting environment.')
-}
+export const isApiConfigured =
+  typeof configuredUrl === 'string' && configuredUrl.trim() !== ''
 
-export const API_BASE_URL = configuredUrl.trim().replace(/\/+$/, '')
+const baseUrl = isApiConfigured
+  ? (configuredUrl as string).trim().replace(/\/+$/, '')
+  : ''
 
-const resource = (path: string): string => `${API_BASE_URL}${path}`
+export const API_BASE_URL = baseUrl
+
+const resource = (path: string): string => `${baseUrl}${path}`
 
 export const API_ENDPOINTS = {
   health: resource('/'),
@@ -69,4 +72,11 @@ export const API_ENDPOINTS = {
     resource(`/notifications/${encodeURIComponent(notificationId)}`),
 }
 
-export const WS_URL = `${API_BASE_URL.replace(/^http/, 'ws')}/ws`
+export const WS_URL = isApiConfigured
+  ? `${baseUrl.replace(/^http/, 'ws')}/ws`
+  : ''
+
+export const configurationError = (): Error =>
+  new Error(
+    'VITE_API_BASE_URL is not configured. Set it in the Vercel project environment and redeploy.',
+  )

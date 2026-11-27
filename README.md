@@ -184,8 +184,10 @@ must contain the `backend/` folder.
 ### Vercel (React frontend)
 
 Framework preset **Vite**, root directory repository root, build `npm run build`,
-output `dist`. Add `VITE_API_BASE_URL` pointing at the Render service and redeploy
-after changing it (Vite embeds it at build time). The backend's `FRONTEND_ORIGIN`
+output `dist`. `vercel.json` supplies `VITE_API_BASE_URL` pointing at the Render service at
+build time; the same variable can be overridden in the Vercel dashboard. Redeploy
+after changing it (Vite embeds it at build time). If the variable is missing, the
+dashboard now renders an explicit configuration message instead of a blank page. The backend's `FRONTEND_ORIGIN`
 must match the Vercel domain exactly. `ws://`/`wss://` for the live feed is derived
 from `VITE_API_BASE_URL` automatically.
 
