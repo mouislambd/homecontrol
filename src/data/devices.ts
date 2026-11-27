@@ -1,25 +1,12 @@
-import type { Device } from '../types'
+import type { DeviceAccent } from '../types'
 
-export const initialDevices: Device[] = [
-  {
-    id: 'light',
-    name: 'Light',
-    description: 'Living room lighting',
-    isOn: true,
-    accent: 'light',
-  },
-  {
-    id: 'fan',
-    name: 'Fan',
-    description: 'Ceiling fan',
-    isOn: false,
-    accent: 'fan',
-  },
-  {
-    id: 'ac',
-    name: 'Air Conditioner',
-    description: 'Climate control',
-    isOn: true,
-    accent: 'ac',
-  },
-]
+export interface DeviceMeta {
+  description: string
+  accent: DeviceAccent
+}
+
+export const deviceMeta: Record<string, DeviceMeta> = {
+  light: { description: 'Living room lighting', accent: 'light' },
+  fan: { description: 'Ceiling fan', accent: 'fan' },
+  ac: { description: 'Climate control', accent: 'ac' },
+}

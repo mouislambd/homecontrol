@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.main import app
+from backend.main import app, build_allowed_origins
 
 client = TestClient(app)
 
@@ -59,3 +59,23 @@ def test_invalid_device_id_returns_404(action):
 
     assert response.status_code == 404
     assert "not-a-device" in response.json()["detail"]
+
+
+def test_cors_includes_configured_frontend_origin(monkeypatch):
+    monkeypatch.setenv("FRONTEND_ORIGIN", "https://homecontrol-app.vercel.app")
+
+    origins = build_allowed_origins()
+
+    assert "https://homecontrol-app.vercel.app" in origins
+    assert "http://localhost:5173" in origins
+    assert "*" not in origins
+
+
+def test_cors_defaults_to_localhost_only(monkeypatch):
+    monkeypatch.delenv("FRONTEND_ORIGIN", raising=False)
+    monkeypatch.delenv("BACKEND_CORS_ORIGINS", raising=False)
+
+    assert build_allowed_origins() == [
+        "http://localhost:5173",
+        "http://localhost:3000",
+    ]

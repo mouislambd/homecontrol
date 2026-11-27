@@ -1,23 +1,79 @@
-import { useState } from 'react'
-import { DeviceCard } from './components/DeviceCard'
+import { useEffect, useState } from 'react'
 import { Header } from './components/Header'
-import { SummarySection } from './components/SummarySection'
-import { initialDevices } from './data/devices'
-import type { Device } from './types'
+import { Tabs } from './components/Tabs'
+import type { TabItem } from './components/Tabs'
+import { WS_URL } from './config/api'
+import type { ViewId } from './types'
+import { ActivityView } from './views/ActivityView'
+import { DevicesView } from './views/DevicesView'
+import { EnergyView } from './views/EnergyView'
+import { NotificationsView } from './views/NotificationsView'
+import { RoomsView } from './views/RoomsView'
+import { RulesView } from './views/RulesView'
+import { SchedulesView } from './views/SchedulesView'
+
+const tabs: TabItem[] = [
+  { id: 'devices', label: 'Devices' },
+  { id: 'rooms', label: 'Rooms' },
+  { id: 'schedules', label: 'Schedules' },
+  { id: 'rules', label: 'Automations' },
+  { id: 'energy', label: 'Energy' },
+  { id: 'activity', label: 'History' },
+  { id: 'notifications', label: 'Notifications' },
+]
 
 function App() {
-  const [devices, setDevices] = useState<Device[]>(initialDevices)
+  const [view, setView] = useState<ViewId>('devices')
+  const [revision, setRevision] = useState(0)
+  const [connected, setConnected] = useState(false)
 
-  const toggleDevice = (id: string) => {
-    setDevices((current) =>
-      current.map((device) =>
-        device.id === id ? { ...device, isOn: !device.isOn } : device,
-      ),
-    )
-  }
+  useEffect(() => {
+    let disposed = false
+    let socket: WebSocket | null = null
+    let timer: number | undefined
 
-  const activeCount = devices.filter((device) => device.isOn).length
-  const inactiveCount = devices.length - activeCount
+    const schedule = () => {
+      if (disposed) return
+      if (timer !== undefined) window.clearTimeout(timer)
+      timer = window.setTimeout(connect, 3000)
+    }
+
+    const connect = () => {
+      if (disposed) return
+      try {
+        socket = new WebSocket(WS_URL)
+      } catch {
+        schedule()
+        return
+      }
+      socket.onopen = () => {
+        if (!disposed) setConnected(true)
+      }
+      socket.onmessage = (event: MessageEvent<string>) => {
+        try {
+          const message: { event?: string } = JSON.parse(event.data)
+          if (message.event && message.event !== 'connected') {
+            setRevision((current) => current + 1)
+          }
+        } catch {
+          return
+        }
+      }
+      socket.onerror = () => socket?.close()
+      socket.onclose = () => {
+        if (disposed) return
+        setConnected(false)
+        schedule()
+      }
+    }
+
+    connect()
+    return () => {
+      disposed = true
+      if (timer !== undefined) window.clearTimeout(timer)
+      socket?.close()
+    }
+  }, [])
 
   return (
     <div className="relative min-h-screen overflow-hidden font-sans text-slate-100">
@@ -30,41 +86,27 @@ function App() {
       <main className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-5 py-8 sm:px-8 sm:py-12">
         <Header />
 
-        <section className="mt-12 sm:mt-16">
-          <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <h2 className="text-2xl font-semibold tracking-tight text-white">
-                Your devices
-              </h2>
-              <p className="mt-1 text-sm text-slate-400">
-                Manage and monitor your connected devices
-              </p>
-            </div>
-            <div className="flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1.5 text-xs font-medium text-emerald-300">
-              <span className="h-1.5 w-1.5 animate-pulse-soft rounded-full bg-emerald-300" />
-              Live
-            </div>
-          </div>
+        <div className="mt-6 flex items-center gap-2 text-xs text-slate-400">
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${
+              connected ? 'animate-pulse-soft bg-emerald-300' : 'bg-slate-500'
+            }`}
+          />
+          {connected ? 'Real-time connected' : 'Reconnecting to real-time feed…'}
+        </div>
 
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {devices.map((device) => (
-              <DeviceCard
-                key={device.id}
-                device={device}
-                onToggle={() => toggleDevice(device.id)}
-              />
-            ))}
-          </div>
-        </section>
+        <Tabs tabs={tabs} active={view} onChange={setView} />
 
-        <SummarySection
-          total={devices.length}
-          active={activeCount}
-          inactive={inactiveCount}
-        />
+        {view === 'devices' && <DevicesView revision={revision} />}
+        {view === 'rooms' && <RoomsView revision={revision} />}
+        {view === 'schedules' && <SchedulesView revision={revision} />}
+        {view === 'rules' && <RulesView revision={revision} />}
+        {view === 'energy' && <EnergyView revision={revision} />}
+        {view === 'activity' && <ActivityView revision={revision} />}
+        {view === 'notifications' && <NotificationsView revision={revision} />}
 
         <footer className="mt-auto pt-12 text-center text-xs text-slate-600">
-          Smart Home Controller · Frontend preview
+          Smart Home Controller · Simulation dashboard
         </footer>
       </main>
     </div>

@@ -12,9 +12,18 @@ const deviceIcons = {
 interface DeviceCardProps {
   device: Device
   onToggle: () => void
+  disabled?: boolean
+  online?: boolean
+  onConnectivity?: () => void
 }
 
-export function DeviceCard({ device, onToggle }: DeviceCardProps) {
+export function DeviceCard({
+  device,
+  onToggle,
+  disabled = false,
+  online = true,
+  onConnectivity,
+}: DeviceCardProps) {
   const theme = accentThemes[device.accent]
   const Icon = deviceIcons[device.accent]
   const { isOn } = device
@@ -45,6 +54,7 @@ export function DeviceCard({ device, onToggle }: DeviceCardProps) {
           onChange={onToggle}
           label={`Toggle ${device.name}`}
           activeTrack={theme.toggleTrack}
+          disabled={disabled}
         />
       </div>
 
@@ -59,7 +69,23 @@ export function DeviceCard({ device, onToggle }: DeviceCardProps) {
         <p className="mt-1 text-xs text-slate-500">{device.description}</p>
       </div>
 
-      <div className="relative mt-6 flex items-center justify-between border-t border-white/5 pt-4">
+      <div className="relative mt-4 flex items-center justify-between text-xs">
+        <span className={online ? 'text-emerald-300' : 'text-rose-300'}>
+          {online ? 'Online' : 'Offline'}
+        </span>
+        {onConnectivity && (
+          <button
+            type="button"
+            onClick={onConnectivity}
+            disabled={disabled}
+            className="rounded-full border border-white/10 px-3 py-1 text-[11px] text-slate-300 transition hover:border-indigo-300/40 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {online ? 'Disconnect' : 'Connect'}
+          </button>
+        )}
+      </div>
+
+      <div className="relative mt-4 flex items-center justify-between border-t border-white/5 pt-4">
         <div className="flex items-center gap-2">
           <span
             className={`h-2 w-2 rounded-full transition-all duration-300 ${
