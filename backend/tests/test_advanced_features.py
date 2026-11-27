@@ -108,3 +108,47 @@ def test_threshold_rule_matching_boundaries():
 
 def test_database_mode_not_enabled_without_url():
     assert get_container().postgres is False
+
+
+def test_storage_status_endpoint_reports_mode_without_secrets():
+    response = client.get("/health/storage")
+    assert response.status_code == 200
+    assert set(response.json()) == {
+        "mode",
+        "database_configured",
+        "automation_rules",
+    }
+    assert response.json()["mode"] == "memory"
+    assert response.json()["database_configured"] is False
+
+
+def test_switching_temperature_rule_to_device_state_clears_threshold():
+    created = client.post(
+        "/rules",
+        json={
+            "name": "Cooling threshold",
+            "trigger_device_id": "ac",
+            "trigger_type": "temperature_above",
+            "threshold_c": 28,
+            "target_device_id": "fan",
+            "target_action": "ON",
+        },
+    )
+    assert created.status_code == 201
+    rule_id = created.json()["id"]
+
+    updated = client.put(
+        f"/rules/{rule_id}",
+        json={
+            "name": "Cooling threshold",
+            "trigger_type": "device_state",
+            "trigger_status": "ON",
+            "target_device_id": "fan",
+            "target_action": "ON",
+            "threshold_c": None,
+        },
+    )
+    assert updated.status_code == 200
+    assert updated.json()["trigger_type"] == "device_state"
+    assert updated.json()["threshold_c"] is None
+    assert client.get(f"/rules/{rule_id}").json()["threshold_c"] is None

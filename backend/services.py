@@ -538,6 +538,7 @@ class AutomationService:
         enabled: bool | None = None,
         trigger_type: TriggerType | None = None,
         threshold_c: float | None = None,
+        clear_threshold: bool = False,
     ) -> AutomationRule:
         rule = self.get_rule(rule_id)
         if trigger_device_id is not None:
@@ -558,6 +559,8 @@ class AutomationService:
             rule.trigger_type = TriggerType(trigger_type)
         if threshold_c is not None:
             rule.threshold_c = threshold_c
+        if clear_threshold:
+            rule.threshold_c = None
         self._rules.update(rule)
         return rule
 

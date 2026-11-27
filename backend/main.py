@@ -18,7 +18,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from typing import Literal
 
 try:
-    from .container import get_container, get_realtime_hub
+    from .container import get_container, get_realtime_hub, get_storage_mode
     from .domain import DeviceStatus, DeviceType, PowerAction, TriggerType
     from .exceptions import SmartHomeError
     from .logging_config import configure_logging
@@ -50,10 +50,11 @@ try:
         ScheduleList,
         ScheduleOut,
         ScheduleUpdate,
+        StorageStatus,
         TemperatureUpdate,
     )
 except ImportError:
-    from container import get_container, get_realtime_hub
+    from container import get_container, get_realtime_hub, get_storage_mode
     from domain import DeviceStatus, DeviceType, PowerAction, TriggerType
     from exceptions import SmartHomeError
     from logging_config import configure_logging
@@ -85,6 +86,7 @@ except ImportError:
         ScheduleList,
         ScheduleOut,
         ScheduleUpdate,
+        StorageStatus,
         TemperatureUpdate,
     )
 
@@ -210,6 +212,15 @@ def _device_detail(device, container) -> DeviceDetail:
 def health() -> HealthResponse:
     return HealthResponse(
         message="Smart Home Controller API is running", status="ok"
+    )
+
+
+@app.get("/health/storage", response_model=StorageStatus)
+def storage_status(container=Depends(get_container)) -> StorageStatus:
+    return StorageStatus(
+        mode=get_storage_mode(),
+        database_configured=container.postgres,
+        automation_rules=len(container.automation_service.list_rules()),
     )
 
 
@@ -540,6 +551,7 @@ def update_rule(
             enabled=payload.enabled,
             trigger_type=TriggerType(payload.trigger_type) if payload.trigger_type else None,
             threshold_c=payload.threshold_c,
+            clear_threshold=payload.trigger_type == "device_state",
         )
     )
 

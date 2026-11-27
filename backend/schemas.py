@@ -295,6 +295,12 @@ class EnergyLogList(BaseModel):
     )
 
 
+class StorageStatus(BaseModel):
+    mode: str
+    database_configured: bool
+    automation_rules: int
+
+
 class EnergyStats(BaseModel):
     total_wh: float
     interval_count: int

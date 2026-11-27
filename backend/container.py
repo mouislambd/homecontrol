@@ -6,7 +6,10 @@ Storage is chosen once here: in-memory by default, SQLite when
 ``SMART_HOME_DB_PATH`` is configured.
 """
 
+import logging
 import os
+
+logger = logging.getLogger(__name__)
 
 try:
     from . import devices
@@ -115,6 +118,13 @@ class AppContainer:
             "SMART_HOME_DB_PATH", ""
         ).strip()
         self.postgres = postgres if postgres is not None else is_database_configured()
+        if self.postgres:
+            self.storage_mode = "postgresql"
+        elif self.db_path:
+            self.storage_mode = "sqlite_json"
+        else:
+            self.storage_mode = "memory"
+        logger.info("storage backend selected: %s", self.storage_mode)
         self.events = EventBroker()
         self.realtime = RealtimeHub()
         self._build()
@@ -272,6 +282,10 @@ _container = AppContainer()
 
 def get_container() -> AppContainer:
     return _container
+
+
+def get_storage_mode() -> str:
+    return _container.storage_mode
 
 
 def get_realtime_hub() -> RealtimeHub:

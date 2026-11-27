@@ -193,6 +193,41 @@ def test_timezone_schedule_due_with_database(db_env):
     assert container.device_service.get_device("light").status == "OFF"
 
 
+def test_temperature_rule_survives_container_reload_and_crud(db_env):
+    first = AppContainer(postgres=True)
+    created = first.automation_service.create_rule(
+        "Hot room persistence",
+        "ac",
+        DeviceStatus.ON,
+        "fan",
+        PowerAction.ON,
+        trigger_type=TriggerType.TEMPERATURE_ABOVE,
+        threshold_c=29.0,
+    )
+    first.automation_service.update_rule(
+        created.id, name="Hot room updated", threshold_c=30.0
+    )
+
+    reloaded = AppContainer(postgres=True)
+    rules = reloaded.automation_service.list_rules()
+    assert len(rules) == 1
+    assert rules[0].name == "Hot room updated"
+    assert rules[0].trigger_type is TriggerType.TEMPERATURE_ABOVE
+    assert rules[0].threshold_c == 30.0
+
+    reloaded.automation_service.update_rule(
+        rules[0].id,
+        trigger_type=TriggerType.DEVICE_STATE,
+        clear_threshold=True,
+    )
+    after_clear = AppContainer(postgres=True).automation_service.get_rule(rules[0].id)
+    assert after_clear.trigger_type is TriggerType.DEVICE_STATE
+    assert after_clear.threshold_c is None
+
+    reloaded.automation_service.delete_rule(rules[0].id)
+    assert AppContainer(postgres=True).automation_service.list_rules() == ()
+
+
 def test_database_constraints_are_enforced(db_env):
     with pytest.raises(IntegrityError):
         with session_scope() as session:
